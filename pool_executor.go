@@ -12,6 +12,7 @@ type poolExecutorOption func(opts *poolExecutorOptions)
 
 type poolExecutorOptions struct {
 	MaxConcurrent    int
+	MaxBlockingTasks int
 	ExecuteTimeout   time.Duration
 	ErrorHandler     ErrorHandler
 	RejectionHandler RejectionHandler
@@ -27,6 +28,12 @@ var defaultPoolExecutorOptions = poolExecutorOptions{
 func WithMaxConcurrent(concurrent int) poolExecutorOption {
 	return func(opts *poolExecutorOptions) {
 		opts.MaxConcurrent = concurrent
+	}
+}
+
+func WithMaxBlockingTasks(max int) poolExecutorOption {
+	return func(opts *poolExecutorOptions) {
+		opts.MaxBlockingTasks = max
 	}
 }
 
@@ -55,7 +62,7 @@ func NewPoolExecutor(opts ...poolExecutorOption) Executor {
 	for _, o := range opts {
 		o(&opt)
 	}
-	pool, err := ants.NewPool(opt.MaxConcurrent)
+	pool, err := ants.NewPool(opt.MaxConcurrent, ants.WithMaxBlockingTasks(opt.MaxBlockingTasks))
 	if err != nil {
 		panic(err)
 	}
