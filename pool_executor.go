@@ -70,6 +70,10 @@ func (f ErrorHandlerFunc) HandlerError(runnable Runnable, e error) {
 }
 
 func NewPoolExecutor(opts ..._PoolExecutorOption) Executor {
+	return NewPoolExecutorService[any](opts...)
+}
+
+func NewPoolExecutorService[T any](opts ..._PoolExecutorOption) ExecutorService[T] {
 	var opt = _DefaultPoolExecutorOptions
 	for _, o := range opts {
 		o(&opt)
@@ -78,21 +82,6 @@ func NewPoolExecutor(opts ..._PoolExecutorOption) Executor {
 		ants.WithMaxBlockingTasks(opt.MaxBlockingTasks),
 		// do nothing, will handle by ErrorHandler
 		ants.WithPanicHandler(func(cause interface{}) {}))
-	if err != nil {
-		panic(err)
-	}
-	return &PoolExecutor[any]{
-		opts: opt,
-		pool: pool,
-	}
-}
-
-func NewPoolExecutorService[T any](opts ..._PoolExecutorOption) ExecutorService[T] {
-	var opt = _DefaultPoolExecutorOptions
-	for _, o := range opts {
-		o(&opt)
-	}
-	pool, err := ants.NewPool(opt.MaxConcurrent)
 	if err != nil {
 		panic(err)
 	}

@@ -36,11 +36,13 @@ const (
 )
 
 type FutureTask[T any] struct {
-	val      T
-	err      error
-	callable Callable[T]
-	closeCh  chan struct{}
-	state    uint32
+	val       T
+	err       error
+	callable  Callable[T]
+	closeCh   chan struct{}
+	state     uint32
+	thenFunc  ThenFunction[T]
+	catchFunc CatchFunction
 }
 
 func NewFutureTask[T any](callable Callable[T]) *FutureTask[T] {
@@ -52,7 +54,7 @@ func NewFutureTask[T any](callable Callable[T]) *FutureTask[T] {
 }
 
 // Run implement runnable
-// will set f.err if Call return error
+// will completeValue f.err if Call return error
 func (f *FutureTask[T]) Run(ctx context.Context) {
 	if f.state != _StateNew {
 		return
@@ -60,10 +62,10 @@ func (f *FutureTask[T]) Run(ctx context.Context) {
 
 	val, err := f.callable.Call(ctx)
 	if err != nil {
-		f.setError(err)
+		f.completeError(err)
 		return
 	}
-	f.set(val)
+	f.completeValue(val)
 	return
 }
 
@@ -79,6 +81,20 @@ func (f *FutureTask[T]) Get(ctx context.Context) (T, error) {
 	}
 }
 
+func (f *FutureTask[T]) Then(thenFunc ThenFunction[T]) {
+	f.thenFunc = thenFunc
+	if f.Completed() {
+		f.postComplete()
+	}
+}
+
+func (f *FutureTask[T]) Catch(catchFunc CatchFunction) {
+	f.catchFunc = catchFunc
+	if f.Completed() {
+		f.postComplete()
+	}
+}
+
 func (f *FutureTask[T]) report(state uint32) (T, error) {
 	switch state {
 	case _StateNormal:
@@ -91,21 +107,35 @@ func (f *FutureTask[T]) report(state uint32) (T, error) {
 	panic(ErrInvalidState{state: f.state})
 }
 
-func (f *FutureTask[T]) set(val T) {
+func (f *FutureTask[T]) completeValue(val T) {
 	state := &f.state
 	if atomic.CompareAndSwapUint32(state, _StateNew, _StateCompleting) {
 		f.val = val
 		atomic.StoreUint32(state, _StateNormal)
 		close(f.closeCh)
+		f.postComplete()
 	}
 }
 
-func (f *FutureTask[T]) setError(err error) {
+func (f *FutureTask[T]) completeError(err error) {
 	state := &f.state
 	if atomic.CompareAndSwapUint32(state, _StateNew, _StateCompleting) {
 		f.err = err
 		atomic.StoreUint32(state, _StateError)
 		close(f.closeCh)
+		f.postComplete()
+	}
+}
+
+func (f *FutureTask[T]) postComplete() {
+	if f.CompletedError() {
+		if f.catchFunc != nil {
+			f.catchFunc(f.err)
+		}
+	} else {
+		if f.thenFunc != nil {
+			f.thenFunc(f.val)
+		}
 	}
 }
 
@@ -129,4 +159,9 @@ func (f *FutureTask[T]) Canceled() bool {
 func (f *FutureTask[T]) Completed() bool {
 	state := atomic.LoadUint32(&f.state)
 	return state >= _StateNormal
+}
+
+func (f *FutureTask[T]) CompletedError() bool {
+	state := atomic.LoadUint32(&f.state)
+	return state == _StateError
 }

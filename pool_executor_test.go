@@ -50,10 +50,12 @@ func TestPoolExecutor_Execute(t *testing.T) {
 	require.True(t, errCaught)
 }
 
+type Person struct {
+	Name string
+}
+
 func TestPoolExecutor_Submit(t *testing.T) {
-	type Person struct {
-		Name string
-	}
+
 	service := NewPoolExecutorService[Person](WithMaxConcurrent(10))
 
 	t.Run("one task success", func(t *testing.T) {
