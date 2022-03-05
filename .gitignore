@@ -63,7 +63,4 @@ crashlytics-build.properties
 
 # custom
 tmp/
-*_server
-*_cmd
-*.log
 
