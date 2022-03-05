@@ -36,13 +36,14 @@ const (
 )
 
 type FutureTask[T any] struct {
-	val       T
-	err       error
-	callable  Callable[T]
-	closeCh   chan struct{}
-	state     uint32
-	thenFunc  ThenFunction[T]
-	catchFunc CatchFunction
+	val        T
+	err        error
+	callable   Callable[T]
+	closeCh    chan struct{}
+	state      uint32
+	cancelFunc context.CancelFunc
+	thenFunc   ThenFunction[T]
+	catchFunc  CatchFunction
 }
 
 func NewFutureTask[T any](callable Callable[T]) *FutureTask[T] {
@@ -59,6 +60,7 @@ func (f *FutureTask[T]) Run(ctx context.Context) {
 		return
 	}
 
+	ctx, f.cancelFunc = context.WithCancel(ctx)
 	val, err := f.callable.Call(ctx)
 	if err != nil {
 		f.completeError(err)
@@ -74,6 +76,7 @@ func (f *FutureTask[T]) Get(ctx context.Context) (T, error) {
 	}
 	select {
 	case <-ctx.Done():
+		f.cancelCallable()
 		return f.val, ctx.Err()
 	case <-f.closeCh:
 		return f.report(atomic.LoadUint32(&f.state))
@@ -144,10 +147,19 @@ func (f *FutureTask[T]) Cancel() bool {
 	}
 	ok := atomic.CompareAndSwapUint32(&f.state, _StateNew, _StateCanceled)
 	if ok {
+		f.cancelCallable()
+		f.err = ErrFutureCanceled
 		close(f.closeCh)
+		f.postComplete()
 		return true
 	}
 	return false
+}
+
+func (f *FutureTask[T]) cancelCallable() {
+	if f.cancelFunc != nil {
+		f.cancelFunc()
+	}
 }
 
 func (f *FutureTask[T]) Canceled() bool {
@@ -162,5 +174,5 @@ func (f *FutureTask[T]) Completed() bool {
 
 func (f *FutureTask[T]) CompletedError() bool {
 	state := atomic.LoadUint32(&f.state)
-	return state == _StateError
+	return state != _StateNormal
 }
