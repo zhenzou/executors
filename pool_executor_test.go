@@ -10,6 +10,46 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPoolExecutor_Execute(t *testing.T) {
+	type Person struct {
+		Name string
+	}
+
+	executed := false
+	errCaught := false
+
+	ch1 := make(chan struct{})
+	ch2 := make(chan struct{})
+	service := NewPoolExecutorService[Person](
+		WithMaxConcurrent(10),
+		WithErrorHandler(ErrorHandlerFunc(func(runnable Runnable, e error) {
+			errCaught = true
+			require.Contains(t, "test", e.Error())
+			close(ch1)
+		})))
+
+	t.Run("run", func(t *testing.T) {
+		err := service.Execute(RunnableFunc(func(ctx context.Context) {
+			executed = true
+			close(ch2)
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("panic handler", func(t *testing.T) {
+		err := service.Execute(RunnableFunc(func(ctx context.Context) {
+			panic(errors.New("test"))
+		}))
+		require.NoError(t, err)
+	})
+
+	<-ch1
+	<-ch2
+
+	require.True(t, executed)
+	require.True(t, errCaught)
+}
+
 func TestPoolExecutor_Submit(t *testing.T) {
 	type Person struct {
 		Name string
@@ -88,6 +128,5 @@ func TestPoolExecutor_Submit(t *testing.T) {
 			}()
 		}
 		wg.Wait()
-
 	})
 }

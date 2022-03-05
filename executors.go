@@ -3,6 +3,7 @@ package executors
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 var (
@@ -10,18 +11,26 @@ var (
 	ErrClosed            = errors.New("closed")
 )
 
+type ErrPanic struct {
+	Cause interface{}
+}
+
+func (e ErrPanic) Error() string {
+	return fmt.Sprintf("%v", e.Cause)
+}
+
 type Runnable interface {
-	Run(ctx context.Context) error
+	Run(ctx context.Context)
 }
 
 type Callable[T any] interface {
 	Call(ctx context.Context) (T, error)
 }
 
-type RunnableFunc func(ctx context.Context) error
+type RunnableFunc func(ctx context.Context)
 
-func (r RunnableFunc) Run(ctx context.Context) error {
-	return r(ctx)
+func (r RunnableFunc) Run(ctx context.Context) {
+	r(ctx)
 }
 
 type CallableFunc[T any] func(ctx context.Context) (T, error)

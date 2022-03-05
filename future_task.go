@@ -51,20 +51,20 @@ func NewFutureTask[T any](callable Callable[T]) *FutureTask[T] {
 	}
 }
 
-// Run always return nil
+// Run implement runnable
 // will set f.err if Call return error
-func (f *FutureTask[T]) Run(ctx context.Context) error {
+func (f *FutureTask[T]) Run(ctx context.Context) {
 	if f.state != _StateNew {
-		return nil
+		return
 	}
 
 	val, err := f.callable.Call(ctx)
 	if err != nil {
 		f.setError(err)
-		return nil
+		return
 	}
 	f.set(val)
-	return nil
+	return
 }
 
 func (f *FutureTask[T]) Get(ctx context.Context) (T, error) {

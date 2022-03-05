@@ -8,7 +8,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-type poolExecutorOption func(opts *poolExecutorOptions)
+type _PoolExecutorOption func(opts *poolExecutorOptions)
 
 type poolExecutorOptions struct {
 	MaxConcurrent    int
@@ -18,34 +18,40 @@ type poolExecutorOptions struct {
 	RejectionHandler RejectionHandler
 }
 
-var defaultPoolExecutorOptions = poolExecutorOptions{
+var _DefaultPoolExecutorOptions = poolExecutorOptions{
 	MaxConcurrent:    10,
 	ExecuteTimeout:   0,
 	ErrorHandler:     DiscardErrorHandler{},
 	RejectionHandler: DiscardRejectionPolicy{},
 }
 
-func WithMaxConcurrent(concurrent int) poolExecutorOption {
+func WithMaxConcurrent(concurrent int) _PoolExecutorOption {
 	return func(opts *poolExecutorOptions) {
 		opts.MaxConcurrent = concurrent
 	}
 }
 
-func WithMaxBlockingTasks(max int) poolExecutorOption {
+func WithMaxBlockingTasks(max int) _PoolExecutorOption {
 	return func(opts *poolExecutorOptions) {
 		opts.MaxBlockingTasks = max
 	}
 }
 
-func WithExecuteTimeout(ts time.Duration) poolExecutorOption {
+func WithExecuteTimeout(ts time.Duration) _PoolExecutorOption {
 	return func(opts *poolExecutorOptions) {
 		opts.ExecuteTimeout = ts
 	}
 }
 
-func WithRejectionHandler(handler RejectionHandler) poolExecutorOption {
+func WithRejectionHandler(handler RejectionHandler) _PoolExecutorOption {
 	return func(opts *poolExecutorOptions) {
 		opts.RejectionHandler = handler
+	}
+}
+
+func WithErrorHandler(handler ErrorHandler) _PoolExecutorOption {
+	return func(opts *poolExecutorOptions) {
+		opts.ErrorHandler = handler
 	}
 }
 
@@ -57,12 +63,21 @@ type ErrorHandler interface {
 	HandlerError(runnable Runnable, e error)
 }
 
-func NewPoolExecutor(opts ...poolExecutorOption) Executor {
-	var opt = defaultPoolExecutorOptions
+type ErrorHandlerFunc func(runnable Runnable, e error)
+
+func (f ErrorHandlerFunc) HandlerError(runnable Runnable, e error) {
+	f(runnable, e)
+}
+
+func NewPoolExecutor(opts ..._PoolExecutorOption) Executor {
+	var opt = _DefaultPoolExecutorOptions
 	for _, o := range opts {
 		o(&opt)
 	}
-	pool, err := ants.NewPool(opt.MaxConcurrent, ants.WithMaxBlockingTasks(opt.MaxBlockingTasks))
+	pool, err := ants.NewPool(opt.MaxConcurrent,
+		ants.WithMaxBlockingTasks(opt.MaxBlockingTasks),
+		// do nothing, will handle by ErrorHandler
+		ants.WithPanicHandler(func(cause interface{}) {}))
 	if err != nil {
 		panic(err)
 	}
@@ -72,8 +87,8 @@ func NewPoolExecutor(opts ...poolExecutorOption) Executor {
 	}
 }
 
-func NewPoolExecutorService[T any](opts ...poolExecutorOption) ExecutorService[T] {
-	var opt = defaultPoolExecutorOptions
+func NewPoolExecutorService[T any](opts ..._PoolExecutorOption) ExecutorService[T] {
+	var opt = _DefaultPoolExecutorOptions
 	for _, o := range opts {
 		o(&opt)
 	}
@@ -96,10 +111,12 @@ func (p *PoolExecutor[T]) Execute(r Runnable) error {
 	err := p.pool.Submit(func() {
 		ctx, cancelFunc := p.newContext()
 		defer cancelFunc()
-		err := r.Run(ctx)
-		if err != nil {
-			p.opts.ErrorHandler.HandlerError(r, err)
-		}
+		defer func() {
+			if cause := recover(); cause != nil {
+				p.opts.ErrorHandler.HandlerError(r, ErrPanic{Cause: cause})
+			}
+		}()
+		r.Run(ctx)
 	})
 
 	if err == nil {
@@ -164,5 +181,6 @@ type CallerRunsRejectionPolicy struct {
 }
 
 func (d CallerRunsRejectionPolicy) RejectExecution(runnable Runnable, e Executor) error {
-	return runnable.Run(context.Background())
+	runnable.Run(context.Background())
+	return nil
 }
