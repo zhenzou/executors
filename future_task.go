@@ -54,7 +54,6 @@ func NewFutureTask[T any](callable Callable[T]) *FutureTask[T] {
 }
 
 // Run implement runnable
-// will completeValue f.err if Call return error
 func (f *FutureTask[T]) Run(ctx context.Context) {
 	if f.state != _StateNew {
 		return

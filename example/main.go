@@ -1,12 +1,3 @@
-## executors
-
-A package like Java ThreadPoolExecutor for Go based on generic.
-
-To bring better async task processing experience.
-
-## Example
-
-```go
 package main
 
 import (
@@ -54,6 +45,3 @@ func main() {
 		println(err.Error())
 	})
 }
-
-```
-
