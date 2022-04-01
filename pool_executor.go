@@ -14,15 +14,15 @@ type poolExecutorOptions struct {
 	MaxConcurrent    int
 	MaxBlockingTasks int
 	ExecuteTimeout   time.Duration
-	ErrorHandler     ErrorHandler
+	ErrorHandler     ExceptionHandler
 	RejectionHandler RejectionHandler
 }
 
 var _DefaultPoolExecutorOptions = poolExecutorOptions{
 	MaxConcurrent:    10,
 	ExecuteTimeout:   0,
-	ErrorHandler:     DiscardErrorHandler{},
-	RejectionHandler: DiscardRejectionPolicy{},
+	ErrorHandler:     NoopErrorHandler{},
+	RejectionHandler: NoopRejectionPolicy{},
 }
 
 func WithMaxConcurrent(concurrent int) _PoolExecutorOption {
@@ -49,7 +49,7 @@ func WithRejectionHandler(handler RejectionHandler) _PoolExecutorOption {
 	}
 }
 
-func WithErrorHandler(handler ErrorHandler) _PoolExecutorOption {
+func WithErrorHandler(handler ExceptionHandler) _PoolExecutorOption {
 	return func(opts *poolExecutorOptions) {
 		opts.ErrorHandler = handler
 	}
@@ -59,13 +59,13 @@ type RejectionHandler interface {
 	RejectExecution(runnable Runnable, e Executor) error
 }
 
-type ErrorHandler interface {
-	HandlerError(runnable Runnable, e error)
+type ExceptionHandler interface {
+	CatchException(runnable Runnable, e error)
 }
 
 type ErrorHandlerFunc func(runnable Runnable, e error)
 
-func (f ErrorHandlerFunc) HandlerError(runnable Runnable, e error) {
+func (f ErrorHandlerFunc) CatchException(runnable Runnable, e error) {
 	f(runnable, e)
 }
 
@@ -80,7 +80,7 @@ func NewPoolExecutorService[T any](opts ..._PoolExecutorOption) ExecutorService[
 	}
 	pool, err := ants.NewPool(opt.MaxConcurrent,
 		ants.WithMaxBlockingTasks(opt.MaxBlockingTasks),
-		// do nothing, will handle by ErrorHandler
+		// do nothing, will handle by ExceptionHandler
 		ants.WithPanicHandler(func(cause interface{}) {}))
 	if err != nil {
 		panic(err)
@@ -102,7 +102,7 @@ func (p *PoolExecutor[T]) Execute(r Runnable) error {
 		defer cancelFunc()
 		defer func() {
 			if cause := recover(); cause != nil {
-				p.opts.ErrorHandler.HandlerError(r, ErrPanic{Cause: cause})
+				p.opts.ErrorHandler.CatchException(r, ErrPanic{Cause: cause})
 			}
 		}()
 		r.Run(ctx)
@@ -153,10 +153,24 @@ func (p *PoolExecutor[T]) newContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), p.opts.ExecuteTimeout)
 }
 
+type NoopErrorHandler struct {
+}
+
+func (d NoopErrorHandler) CatchException(runnable Runnable, e error) {
+	panic(e)
+}
+
 type DiscardErrorHandler struct {
 }
 
-func (d DiscardErrorHandler) HandlerError(runnable Runnable, e error) {
+func (d DiscardErrorHandler) CatchException(runnable Runnable, e error) {
+}
+
+type NoopRejectionPolicy struct {
+}
+
+func (d NoopRejectionPolicy) RejectExecution(runnable Runnable, e Executor) error {
+	return ErrRejectedExecution
 }
 
 type DiscardRejectionPolicy struct {
