@@ -83,18 +83,20 @@ func (f *FutureTask[T]) Get(ctx context.Context) (T, error) {
 	}
 }
 
-func (f *FutureTask[T]) Then(thenFunc ThenFunction[T]) {
+func (f *FutureTask[T]) Then(thenFunc ThenFunction[T]) Future[T] {
 	f.thenFunc = thenFunc
 	if f.Completed() {
 		f.postComplete()
 	}
+	return f
 }
 
-func (f *FutureTask[T]) Catch(catchFunc CatchFunction) {
+func (f *FutureTask[T]) Catch(catchFunc CatchFunction) Future[T] {
 	f.catchFunc = catchFunc
 	if f.Completed() {
 		f.postComplete()
 	}
+	return f
 }
 
 func (f *FutureTask[T]) report(state uint32) (T, error) {
