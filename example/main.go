@@ -55,4 +55,5 @@ func main() {
 		f3.Cancel()
 	})
 	time.Sleep(3 * time.Second)
+	println("test")
 }
