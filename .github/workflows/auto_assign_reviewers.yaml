@@ -1,11 +1,12 @@
-name: 'Auto Assign Review'
+name: "Auto Assign Review"
 on:
   pull_request:
-    types: [opened, ready_for_review]
+    types: [opened, reopened, ready_for_review]
     branches:
       - testing/*
       - feature/*
       - refactor/*
+      - master
 
 jobs:
   add-reviews:
