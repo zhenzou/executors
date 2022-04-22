@@ -74,6 +74,10 @@ func NewPoolExecutor(opts ..._PoolExecutorOption) Executor {
 }
 
 func NewPoolExecutorService[T any](opts ..._PoolExecutorOption) ExecutorService[T] {
+	return _NewPoolExecutorService[T](opts...)
+}
+
+func _NewPoolExecutorService[T any](opts ..._PoolExecutorOption) *PoolExecutor[T] {
 	var opt = _DefaultPoolExecutorOptions
 	for _, o := range opts {
 		o(&opt)

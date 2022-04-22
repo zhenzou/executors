@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 )
 
 var (
 	ErrRejectedExecution = errors.New("rejected execution")
 	ErrClosed            = errors.New("closed")
 )
+
+type CancelFunc = func()
 
 type ErrPanic struct {
 	Cause interface{}
@@ -47,4 +50,10 @@ type Executor interface {
 type ExecutorService[T any] interface {
 	Executor
 	Submit(callable Callable[T]) (Future[T], error)
+}
+
+type ScheduledExecutor interface {
+	Executor
+	Schedule(r Runnable, delay time.Duration) (CancelFunc, error)
+	ScheduleAtFixRate(r Runnable, period time.Duration) (CancelFunc, error)
 }
