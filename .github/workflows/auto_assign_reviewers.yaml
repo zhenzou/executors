@@ -2,7 +2,7 @@ name: "Auto Assign Review"
 on:
   pull_request:
     types: [opened, reopened]
-     branches:
+    branches:
       - testing/*
       - feature/*
       - refactor/*
