@@ -1,0 +1,15 @@
+name: "Auto Assign Review"
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches:
+      - testing/*
+      - feature/*
+      - refactor/*
+      - master
+
+jobs:
+  add-reviews:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: kentaro-m/auto-assign-action@v1.2.1
