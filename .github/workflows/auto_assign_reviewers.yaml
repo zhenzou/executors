@@ -1,16 +1,15 @@
 name: "Auto Assign Review"
 on:
   pull_request:
-    types: [opened, reopened]
+    types: [opened, reopened, ready_for_review]
     branches:
       - testing/*
       - feature/*
       - refactor/*
       - master
+
 jobs:
-  assign:
+  add-reviews:
     runs-on: ubuntu-latest
     steps:
-      - uses: delivery-much/actions-assigner@v1
-        with:
-          reviewers: SMLsk
+      - uses: kentaro-m/auto-assign-action@v1.2.1
