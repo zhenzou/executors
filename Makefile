@@ -1,10 +1,5 @@
 
 BIN=go
-# BIN=go1.18rc1
-
-go1.18rc1:
-	go install golang.org/dl/go1.18rc1@latest
-	go1.18rc1 download
 
 build:
 	${BIN} build -v ./...
