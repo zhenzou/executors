@@ -7,7 +7,7 @@ on:
 env:
   GO111MODULE: on
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -15,8 +15,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          version: 1.18.1
-          stable: false
+          go-version: 1.18.1
+          stable: true
 
       - name: Build
         run: make build
@@ -30,8 +30,8 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          version: 1.18.1
-          stable: false
+          go-version: 1.18.1
+          stable: true
       - uses: actions/checkout@v2
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
@@ -58,4 +58,4 @@ jobs:
           # skip-build-cache: true
 
           # optionally use a specific version of Go rather than the latest one
-          version: '1.18.1'
+          go-version: '1.18.1'
