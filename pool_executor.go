@@ -3,6 +3,7 @@ package executors
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/panjf2000/ants/v2"
@@ -16,6 +17,7 @@ type poolExecutorOptions struct {
 	ExecuteTimeout   time.Duration
 	ErrorHandler     ExceptionHandler
 	RejectionHandler RejectionHandler
+	Logger           *slog.Logger
 }
 
 var _DefaultPoolExecutorOptions = poolExecutorOptions{
@@ -23,6 +25,7 @@ var _DefaultPoolExecutorOptions = poolExecutorOptions{
 	ExecuteTimeout:   0,
 	ErrorHandler:     NoopErrorHandler{},
 	RejectionHandler: NoopRejectionPolicy{},
+	Logger:           slog.Default(),
 }
 
 func WithMaxConcurrent(concurrent int) _PoolExecutorOption {
@@ -52,6 +55,12 @@ func WithRejectionHandler(handler RejectionHandler) _PoolExecutorOption {
 func WithErrorHandler(handler ExceptionHandler) _PoolExecutorOption {
 	return func(opts *poolExecutorOptions) {
 		opts.ErrorHandler = handler
+	}
+}
+
+func WithLogger(logger *slog.Logger) _PoolExecutorOption {
+	return func(opts *poolExecutorOptions) {
+		opts.Logger = logger
 	}
 }
 

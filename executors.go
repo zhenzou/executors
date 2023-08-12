@@ -8,8 +8,10 @@ import (
 )
 
 var (
-	ErrRejectedExecution = errors.New("rejected execution")
-	ErrClosed            = errors.New("closed")
+	ErrRejectedExecution   = errors.New("rejected execution")
+	ErrClosed              = errors.New("closed")
+	ErrInvalidCronExpr     = errors.New("invalid corn expr")
+	ErrInvalidCronTimezone = errors.New("invalid corn timezone")
 )
 
 type CancelFunc = func()
@@ -60,6 +62,14 @@ type ExecutorService[T any] interface {
 	Submit(callable Callable[T]) (Future[T], error)
 }
 
+type CRONRule struct {
+	// Expr cron expr
+	Expr string `json:"expr,omitempty"`
+
+	// Timezone default UTC
+	Timezone string `json:"timezone,omitempty"`
+}
+
 type ScheduledExecutor interface {
 	Executor
 	// Schedule run a one time task after delay duration
@@ -67,4 +77,7 @@ type ScheduledExecutor interface {
 
 	// ScheduleAtFixRate schedule a periodic task in fixed rate
 	ScheduleAtFixRate(r Runnable, period time.Duration) (CancelFunc, error)
+
+	// ScheduleAtCronRate schedule at periodic cron task
+	ScheduleAtCronRate(r Runnable, rule CRONRule) (CancelFunc, error)
 }

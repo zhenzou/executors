@@ -67,7 +67,6 @@ func (f *FutureTask[T]) Run(ctx context.Context) {
 		return
 	}
 	f.completeValue(val)
-	return
 }
 
 func (f *FutureTask[T]) Get(ctx context.Context) (T, error) {
