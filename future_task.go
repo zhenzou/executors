@@ -23,7 +23,7 @@ func (e ErrInvalidState) Error() string {
 	case _StateError:
 		return "state:error"
 	default:
-		return fmt.Sprintf("unkown state %d", e.state)
+		return fmt.Sprintf("unknown state %d", e.state)
 	}
 }
 

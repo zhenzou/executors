@@ -4,6 +4,15 @@ A package like Java ThreadPoolExecutor for Go based on generic.
 
 To bring better async task processing experience.
 
+[![Go Reference](https://pkg.go.dev/badge/image)](https://pkg.go.dev/github.com/zhenzou/executors)
+[![Go Report](https://goreportcard.com/badge/github.com/zhenzou/executors)](https://goreportcard.com/report/github.com/zhenzou/executors)
+![Go Lint](https://github.com/zhenzou/executors/actions/workflows/lint.yml/badge.svg)
+![Go Test](https://github.com/zhenzou/executors/actions/workflows/test.yml/badge.svg)
+[![Go Coverage](https://github.com/zhenzou/executors/wiki/coverage.svg)](https://github.com/zhenzou/executors/wiki/Test-coverage-report)
+
+
+https://github.com/zhenzou/executors/actions/workflows/test/badge.svg
+
 ## Example
 
 ```go
