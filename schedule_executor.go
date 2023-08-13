@@ -44,7 +44,7 @@ func (p *PoolScheduleExecutor) Schedule(r Runnable, delay time.Duration) (Cancel
 			if errors.Is(err, ErrShutdown) {
 				return
 			}
-			p.opts.ErrorHandler.CatchException(r, err)
+			p.opts.ErrorHandler.CatchError(r, err)
 		}
 	})
 	return timer.Stop, nil
@@ -59,7 +59,7 @@ func (p *PoolScheduleExecutor) ScheduleAtFixRate(r Runnable, period time.Duratio
 			if errors.Is(err, ErrShutdown) {
 				return
 			}
-			p.opts.ErrorHandler.CatchException(r, err)
+			p.opts.ErrorHandler.CatchError(r, err)
 		}
 	})
 	return ticker.Stop, nil
@@ -91,7 +91,7 @@ func (p *PoolScheduleExecutor) dispatchCRON() {
 				if errors.Is(err, ErrShutdown) {
 					return
 				}
-				p.opts.ErrorHandler.CatchException(r, err)
+				p.opts.ErrorHandler.CatchError(r, err)
 			}
 		}
 	}, p.dispatchCRON)
