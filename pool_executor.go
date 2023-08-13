@@ -127,7 +127,7 @@ func (p *PoolExecutor[T]) Execute(r Runnable) error {
 
 	switch {
 	case errors.Is(err, ants.ErrPoolClosed):
-		return ErrClosed
+		return ErrShutdown
 	case errors.Is(err, ants.ErrPoolOverload):
 		return p.opts.RejectionHandler.RejectExecution(r, p)
 	default:

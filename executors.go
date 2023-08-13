@@ -9,7 +9,7 @@ import (
 
 var (
 	ErrRejectedExecution   = errors.New("rejected execution")
-	ErrClosed              = errors.New("closed")
+	ErrShutdown            = errors.New("shutdown")
 	ErrInvalidCronExpr     = errors.New("invalid corn expr")
 	ErrInvalidCronTimezone = errors.New("invalid corn timezone")
 )
@@ -46,7 +46,7 @@ func (c CallableFunc[T]) Call(ctx context.Context) (T, error) {
 
 type Executor interface {
 	// Execute execute a task in background
-	// Will return ErrClosed if shutdown already
+	// Will return ErrShutdown if shutdown already
 	// Will return ErrRejectedExecution if task out of cap
 	Execute(Runnable) error
 

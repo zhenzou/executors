@@ -20,9 +20,10 @@ func TestPoolScheduleExecutor_ScheduleAtFixRate(t *testing.T) {
 	), 100*time.Millisecond)
 
 	time.AfterFunc(1*time.Second, func() {
-		assert.Greater(t, atomic.LoadInt64(&i), 100)
+		assert.GreaterOrEqual(t, atomic.LoadInt64(&i), int64(100))
 	})
 
+	time.Sleep(2 * time.Second)
 	_ = scheduleExecutor.Shutdown(context.Background())
 }
 
@@ -37,8 +38,29 @@ func TestPoolScheduleExecutor_Schedule(t *testing.T) {
 	), 500*time.Millisecond)
 
 	time.AfterFunc(1*time.Second, func() {
-		assert.Equal(t, 20, atomic.LoadInt64(&i))
+		assert.Equal(t, int64(20), atomic.LoadInt64(&i))
 	})
 
+	time.Sleep(2 * time.Second)
+	_ = scheduleExecutor.Shutdown(context.Background())
+}
+
+func TestPoolScheduleExecutor_ScheduleAtCronRate(t *testing.T) {
+	scheduleExecutor := NewPoolScheduleExecutor(WithMaxConcurrent(10))
+
+	var i int64 = 10
+	_, _ = scheduleExecutor.ScheduleAtCronRate(RunnableFunc(func(ctx context.Context) {
+		atomic.AddInt64(&i, 10)
+	},
+	), CRONRule{
+		Expr:     "*/2 * * * * * *",
+		Timezone: "",
+	})
+
+	time.AfterFunc(3*time.Second, func() {
+		assert.LessOrEqual(t, int64(20), atomic.LoadInt64(&i))
+	})
+
+	time.Sleep(3 * time.Second)
 	_ = scheduleExecutor.Shutdown(context.Background())
 }

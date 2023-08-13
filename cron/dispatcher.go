@@ -20,6 +20,7 @@ func NewDispatcher[T any](logger *slog.Logger) Dispatcher[T] {
 		close:     make(chan struct{}, 1),
 		logger:    logger,
 		sleeper:   sleeper.NewSleeper(),
+		nowFn:     time.Now,
 	}
 }
 
@@ -36,10 +37,11 @@ type dispatcher[T any] struct {
 	loopOnce  sync.Once
 	logger    *slog.Logger
 	sleeper   sleeper.Sleeper
+	nowFn     func() time.Time
 }
 
 func (d *dispatcher[T]) AddTask(r T, expr *cronexpr.Expression, location *time.Location) func() {
-	t := newTask(r, expr, location)
+	t := newTask(r, expr, location, d.nowFn)
 
 	d.locker.Lock()
 	defer d.locker.Unlock()
@@ -51,10 +53,9 @@ func (d *dispatcher[T]) AddTask(r T, expr *cronexpr.Expression, location *time.L
 	return d.getRemoveFunc(t)
 }
 
-func (d *dispatcher[T]) Close() {
+func (d *dispatcher[T]) Shutdown() {
 	close(d.close)
 	d.sleeper.Wakeup()
-	close(d.readyChan)
 }
 
 func (d *dispatcher[T]) getRemoveFunc(t *task[T]) func() {
@@ -92,6 +93,7 @@ func (d *dispatcher[T]) loopTakeReadyTask() {
 			select {
 			case <-d.close:
 				d.logger.Info("dispatcher closed")
+				close(d.readyChan)
 				d.closed = true
 				return
 			default:
@@ -131,6 +133,9 @@ func (d *dispatcher[T]) takeReadyTask() (time.Duration, bool) {
 	t.scheduleNextRun()
 	d.heap.Push(t)
 
-	d.readyChan <- t.Task
+	select {
+	case d.readyChan <- t.Task:
+	default:
+	}
 	return 0, true
 }

@@ -2,6 +2,7 @@ package executors
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -14,24 +15,35 @@ import (
 
 func NewPoolScheduleExecutor(opts ..._PoolExecutorOption) ScheduledExecutor {
 	executor := _NewPoolExecutorService[any](opts...)
-	return &PoolScheduleExecutor{
+	scheduleExecutor := PoolScheduleExecutor{
 		PoolExecutor: executor,
-		tw:           gxtime.NewTimerWheel(),
 		dispatcher:   cron.NewDispatcher[Runnable](executor.opts.Logger),
 	}
+	scheduleExecutor.initTimerWheelOnce = sync.OnceFunc(scheduleExecutor.initTimerWheel)
+	return &scheduleExecutor
 }
 
 type PoolScheduleExecutor struct {
 	*PoolExecutor[any]
-	tw               *gxtime.TimerWheel
-	cronScheduleOnce sync.Once
-	dispatcher       cron.Dispatcher[Runnable]
+	tw                 *gxtime.TimerWheel
+	initTimerWheelOnce func()
+	cronScheduleOnce   sync.Once
+	dispatcher         cron.Dispatcher[Runnable]
+}
+
+func (p *PoolScheduleExecutor) initTimerWheel() {
+	p.tw = gxtime.NewTimerWheel()
 }
 
 func (p *PoolScheduleExecutor) Schedule(r Runnable, delay time.Duration) (CancelFunc, error) {
+	p.initTimerWheelOnce()
+
 	timer := p.tw.AfterFunc(delay, func() {
 		err := p.PoolExecutor.Execute(r)
 		if err != nil {
+			if errors.Is(err, ErrShutdown) {
+				return
+			}
 			p.opts.ErrorHandler.CatchException(r, err)
 		}
 	})
@@ -39,9 +51,14 @@ func (p *PoolScheduleExecutor) Schedule(r Runnable, delay time.Duration) (Cancel
 }
 
 func (p *PoolScheduleExecutor) ScheduleAtFixRate(r Runnable, period time.Duration) (CancelFunc, error) {
+	p.initTimerWheelOnce()
+
 	ticker := p.tw.TickFunc(period, func() {
 		err := p.PoolExecutor.Execute(r)
 		if err != nil {
+			if errors.Is(err, ErrShutdown) {
+				return
+			}
 			p.opts.ErrorHandler.CatchException(r, err)
 		}
 	})
@@ -71,6 +88,9 @@ func (p *PoolScheduleExecutor) dispatchCRON() {
 		for r := range ch {
 			err := p.Execute(r)
 			if err != nil {
+				if errors.Is(err, ErrShutdown) {
+					return
+				}
 				p.opts.ErrorHandler.CatchException(r, err)
 			}
 		}
@@ -79,7 +99,15 @@ func (p *PoolScheduleExecutor) dispatchCRON() {
 
 func (p *PoolScheduleExecutor) Shutdown(ctx context.Context) error {
 	defer func() {
-		p.tw.Close()
+		if p.tw != nil {
+			// wakeup tw
+			p.tw.Tick(1 * time.Millisecond)
+			p.tw.Close()
+		}
+	}()
+
+	defer func() {
+		p.dispatcher.Shutdown()
 	}()
 
 	return p.PoolExecutor.Shutdown(ctx)

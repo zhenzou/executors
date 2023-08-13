@@ -26,12 +26,13 @@ func nextTaskID() int32 {
 	return taskIdGenerator.Add(1)
 }
 
-func newTask[T any](r T, expr *cronexpr.Expression, location *time.Location) *task[T] {
+func newTask[T any](r T, expr *cronexpr.Expression, location *time.Location, nowFn func() time.Time) *task[T] {
 	task := &task[T]{
 		ID:          nextTaskID(),
 		Expr:        expr,
 		Task:        r,
-		NextRunTime: time.Now(),
+		NextRunTime: nowFn(),
+		nowFn:       nowFn,
 		Location:    location,
 	}
 
@@ -67,7 +68,7 @@ type Dispatcher[T any] interface {
 	// AddTask return func to remove task
 	AddTask(r T, expr *cronexpr.Expression, location *time.Location) func()
 
-	Close()
+	Shutdown()
 
 	// GetReadyTask get ready task chain
 	GetReadyTask() <-chan T

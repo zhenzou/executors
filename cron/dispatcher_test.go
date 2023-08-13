@@ -92,7 +92,7 @@ func Test_dispatcher_Close(t *testing.T) {
 
 	ch := dispatcher.GetReadyTask()
 
-	dispatcher.Close()
+	dispatcher.Shutdown()
 
 	for i := 0; i < 6; i++ {
 		next, ok := <-ch
@@ -118,25 +118,58 @@ func Test_dispatcher_takeReadyTask(t *testing.T) {
 
 	dispatcher := NewDispatcher[Person](slog.Default()).(*dispatcher[Person])
 
+	// 11 sec
+	now := time.Date(2023, 8, 13, 12, 0, 11, 0, time.UTC)
+	dispatcher.nowFn = func() time.Time {
+		return now
+	}
+
 	p1 := Person{Name: "p1"}
 	p2 := Person{Name: "p2"}
 
 	dispatcher.AddTask(p1, cronexpr.MustParse("*/2 * * * * * *"), time.UTC)
-	dispatcher.AddTask(p2, cronexpr.MustParse("*/3 * * * * * *"), time.UTC)
+	dispatcher.AddTask(p2, cronexpr.MustParse("*/5 * * * * * *"), time.UTC)
 
-	_, ok := dispatcher.takeReadyTask()
+	go func() {
+		ch := dispatcher.GetReadyTask()
+
+		for p := range ch {
+			require.NotEmpty(t, p.Name)
+		}
+	}()
+
+	duration, ok := dispatcher.takeReadyTask()
 	require.False(t, ok)
+	require.Equal(t, 1*time.Second, duration)
 	peek, ok := dispatcher.heap.Peek()
 	require.True(t, ok)
 	require.Equal(t, p1, peek.Task)
 
-	time.Sleep(2 * time.Second)
+	// 12 sec
+	now = now.Add(1 * time.Second)
+
 	_, ok = dispatcher.takeReadyTask()
 	require.True(t, ok)
+	require.Equal(t, 2, dispatcher.heap.Size())
+	peek, ok = dispatcher.heap.Peek()
+	require.True(t, ok)
+	require.Equal(t, p1, peek.Task)
 
+	// 14 sec
+	now = now.Add(2 * time.Second)
+	_, ok = dispatcher.takeReadyTask()
+	require.True(t, ok)
 	peek, ok = dispatcher.heap.Peek()
 	require.True(t, ok)
 	require.Equal(t, p2, peek.Task)
+
+	// 15 sec
+	now = now.Add(1 * time.Second)
+	_, ok = dispatcher.takeReadyTask()
+	require.True(t, ok)
+	peek, ok = dispatcher.heap.Peek()
+	require.True(t, ok)
+	require.Equal(t, p1, peek.Task)
 }
 
 func Test_dispatcher_removeTask(t *testing.T) {
