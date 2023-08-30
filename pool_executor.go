@@ -44,6 +44,7 @@ func (p *PoolExecutor[T]) Execute(r Runnable) error {
 		defer cancelFunc()
 		defer func() {
 			if cause := recover(); cause != nil {
+				p.opts.Logger.Debug("failed to execute task")
 				p.opts.ErrorHandler.CatchError(r, ErrPanic{Cause: cause})
 			}
 		}()
@@ -51,8 +52,11 @@ func (p *PoolExecutor[T]) Execute(r Runnable) error {
 	})
 
 	if err == nil {
+		p.opts.Logger.Debug("submitted a new task")
 		return nil
 	}
+
+	p.opts.Logger.Debug("failed to submit task")
 
 	switch {
 	case errors.Is(err, ants.ErrPoolClosed):

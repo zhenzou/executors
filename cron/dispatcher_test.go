@@ -34,17 +34,17 @@ func Test_getYieldDuration(t *testing.T) {
 			want: maxYieldDuration,
 		},
 		{
-			name: "given run after50 min, should got 5min",
+			name: "given run after 30 secs, should got 30 secs",
 			args: args[any]{
 				t: &task[any]{
-					NextRunTime: now.Add(5 * time.Minute),
+					NextRunTime: now.Add(30 * time.Second),
 					Location:    time.UTC,
 					nowFn: func() time.Time {
 						return now
 					},
 				},
 			},
-			want: 5 * time.Minute,
+			want: 30 * time.Second,
 		},
 	}
 	for _, tt := range tests {

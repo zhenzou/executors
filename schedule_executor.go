@@ -3,6 +3,7 @@ package executors
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -36,6 +37,8 @@ func (p *PoolScheduleExecutor) initTimerWheel() {
 }
 
 func (p *PoolScheduleExecutor) Schedule(r Runnable, delay time.Duration) (CancelFunc, error) {
+	p.opts.Logger.Debug("start to schedule new task", slog.Duration("delay", delay))
+
 	p.initTimerWheelOnce()
 
 	timer := p.tw.AfterFunc(delay, func() {
@@ -51,9 +54,13 @@ func (p *PoolScheduleExecutor) Schedule(r Runnable, delay time.Duration) (Cancel
 }
 
 func (p *PoolScheduleExecutor) ScheduleAtFixRate(r Runnable, period time.Duration) (CancelFunc, error) {
+	p.opts.Logger.Debug("start to schedule new task at fix rate", slog.Duration("period", period))
+
 	p.initTimerWheelOnce()
 
 	ticker := p.tw.TickFunc(period, func() {
+		p.opts.Logger.Debug("start to execute task at fix rate", slog.Duration("period", period))
+
 		err := p.PoolExecutor.Execute(r)
 		if err != nil {
 			if errors.Is(err, ErrShutdown) {
@@ -75,6 +82,8 @@ func (p *PoolScheduleExecutor) ScheduleAtCronRate(r Runnable, rule CRONRule) (Ca
 		return nil, ErrInvalidCronTimezone
 	}
 
+	p.opts.Logger.Debug("start to schedule new task at cron rate", slog.Any("rule", rule))
+
 	removeFunc := p.dispatcher.AddTask(r, expr, location)
 
 	p.cronScheduleOnce.Do(p.dispatchCRON)
@@ -84,13 +93,18 @@ func (p *PoolScheduleExecutor) ScheduleAtCronRate(r Runnable, rule CRONRule) (Ca
 
 func (p *PoolScheduleExecutor) dispatchCRON() {
 	routine.GoWithRecovery(p.opts.Logger, func() {
+		p.opts.Logger.Debug("start to dispatch cron tasks")
 		ch := p.dispatcher.GetReadyTask()
 		for r := range ch {
+			p.opts.Logger.Debug("start to execute cron task")
+
 			err := p.Execute(r)
 			if err != nil {
 				if errors.Is(err, ErrShutdown) {
 					return
 				}
+				p.opts.Logger.Debug("fail to execute cron task")
+
 				p.opts.ErrorHandler.CatchError(r, err)
 			}
 		}

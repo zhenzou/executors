@@ -5,8 +5,8 @@ go 1.21
 require (
 	github.com/aptible/supercronic v0.2.26
 	github.com/dubbogo/timer v0.0.0-20210901143602-5dacc5984f43
-	github.com/panjf2000/ants/v2 v2.4.7
-	github.com/stretchr/testify v1.8.0
+	github.com/panjf2000/ants/v2 v2.8.1
+	github.com/stretchr/testify v1.8.1
 	github.com/zyedidia/generic v1.2.1
 )
 

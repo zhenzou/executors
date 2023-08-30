@@ -11,12 +11,20 @@ import (
 func Test_sleeper_Wakeup(t *testing.T) {
 	s := NewSleeper()
 
+	var i int
+
+	t.Cleanup(func() {
+		require.Equal(t, 1, i)
+	})
+
 	// should not block if no waiting
 	s.Wakeup()
 
 	s.Wakeup()
 
 	s.Wakeup()
+
+	i++
 }
 
 func Test_sleeper_Sleep(t *testing.T) {
