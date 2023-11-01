@@ -128,6 +128,12 @@ func (d *dispatcher[T]) takeReadyTask() (time.Duration, bool) {
 
 	t, ok := d.heap.Peek()
 
+	d.logger.Debug("peek task: ",
+		slog.Int("id", int(t.ID)),
+		slog.String("next_run_time", t.NextRunTime.String()),
+		slog.Bool("ready", t.ready()),
+	)
+
 	if !ok {
 		return maxYieldDuration, false
 	}
@@ -139,9 +145,6 @@ func (d *dispatcher[T]) takeReadyTask() (time.Duration, bool) {
 	t.scheduleNextRun()
 	d.heap.Push(t)
 
-	select {
-	case d.readyChan <- t.Task:
-	default:
-	}
+	d.readyChan <- t.Task
 	return 0, true
 }

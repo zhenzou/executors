@@ -54,14 +54,14 @@ func (t *task[T]) ready() bool {
 
 func (t *task[T]) scheduleNextRun() {
 	t.LastRunTime = t.NextRunTime
-	t.NextRunTime = t.Expr.Next(t.LastRunTime.In(t.Location)).Truncate(time.Microsecond)
+	t.NextRunTime = t.Expr.Next(t.LastRunTime.In(t.Location))
 }
 
 func (t *task[T]) untilNextRun() time.Duration {
 	if t.ready() {
 		return 0
 	}
-	return t.NextRunTime.Sub(t.now()).Truncate(time.Microsecond)
+	return t.NextRunTime.Sub(t.now())
 }
 
 type Dispatcher[T any] interface {
