@@ -12,10 +12,10 @@ func NewPoolExecutor(opts ..._PoolExecutorOption) Executor {
 }
 
 func NewPoolExecutorService[T any](opts ..._PoolExecutorOption) ExecutorService[T] {
-	return _NewPoolExecutorService[T](opts...)
+	return internalNewPoolExecutorService[T](opts...)
 }
 
-func _NewPoolExecutorService[T any](opts ..._PoolExecutorOption) *PoolExecutor[T] {
+func internalNewPoolExecutorService[T any](opts ..._PoolExecutorOption) *PoolExecutor[T] {
 	var opt = _DefaultPoolExecutorOptions
 	for _, o := range opts {
 		o(&opt)
@@ -68,6 +68,10 @@ func (p *PoolExecutor[T]) Execute(r Runnable) error {
 	}
 }
 
+func (p *PoolExecutor[T]) ExecuteFunc(fn func(ctx context.Context)) error {
+	return p.Execute(RunnableFunc(fn))
+}
+
 func (p *PoolExecutor[T]) Submit(callable Callable[T]) (Future[T], error) {
 	f := NewFutureTask[T](callable)
 	err := p.Execute(f)
@@ -75,6 +79,10 @@ func (p *PoolExecutor[T]) Submit(callable Callable[T]) (Future[T], error) {
 		return nil, err
 	}
 	return f, nil
+}
+
+func (p *PoolExecutor[T]) SubmitFunc(fn func(ctx context.Context) (T, error)) (Future[T], error) {
+	return p.Submit(CallableFunc[T](fn))
 }
 
 func (p *PoolExecutor[T]) Shutdown(ctx context.Context) error {

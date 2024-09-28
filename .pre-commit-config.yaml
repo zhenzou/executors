@@ -1,7 +1,7 @@
 exclude: '.*'
 repos:
   - repo: 'https://github.com/golangci/golangci-lint'
-    rev: v1.54.1
+    rev: v1.61.0
     hooks:
       - id: golangci-lint
         entry: golangci-lint run -vvv

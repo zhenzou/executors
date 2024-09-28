@@ -10,7 +10,6 @@ import (
 )
 
 func TestPoolScheduleExecutor_ScheduleAtFixRate(t *testing.T) {
-
 	scheduleExecutor := NewPoolScheduleExecutor(WithMaxConcurrent(10))
 
 	var i int64 = 10
@@ -28,7 +27,6 @@ func TestPoolScheduleExecutor_ScheduleAtFixRate(t *testing.T) {
 }
 
 func TestPoolScheduleExecutor_Schedule(t *testing.T) {
-
 	scheduleExecutor := NewPoolScheduleExecutor(WithMaxConcurrent(10))
 
 	var i int64 = 10

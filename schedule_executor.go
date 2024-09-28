@@ -15,7 +15,7 @@ import (
 )
 
 func NewPoolScheduleExecutor(opts ..._PoolExecutorOption) ScheduledExecutor {
-	executor := _NewPoolExecutorService[any](opts...)
+	executor := internalNewPoolExecutorService[any](opts...)
 	scheduleExecutor := PoolScheduleExecutor{
 		PoolExecutor: executor,
 		dispatcher:   cron.NewDispatcher[Runnable](executor.opts.Logger),
@@ -53,6 +53,10 @@ func (p *PoolScheduleExecutor) Schedule(r Runnable, delay time.Duration) (Cancel
 	return timer.Stop, nil
 }
 
+func (p *PoolScheduleExecutor) ScheduleFunc(fn func(ctx context.Context), delay time.Duration) (CancelFunc, error) {
+	return p.Schedule(RunnableFunc(fn), delay)
+}
+
 func (p *PoolScheduleExecutor) ScheduleAtFixRate(r Runnable, period time.Duration) (CancelFunc, error) {
 	p.opts.Logger.Debug("start to schedule new task at fix rate", slog.Duration("period", period))
 
@@ -72,6 +76,10 @@ func (p *PoolScheduleExecutor) ScheduleAtFixRate(r Runnable, period time.Duratio
 	return ticker.Stop, nil
 }
 
+func (p *PoolScheduleExecutor) ScheduleFuncAtFixRate(fn func(ctx context.Context), delay time.Duration) (CancelFunc, error) {
+	return p.ScheduleAtFixRate(RunnableFunc(fn), delay)
+}
+
 func (p *PoolScheduleExecutor) ScheduleAtCronRate(r Runnable, rule CRONRule) (CancelFunc, error) {
 	expr, err := cronexpr.ParseStrict(rule.Expr)
 	if err != nil {
@@ -89,6 +97,10 @@ func (p *PoolScheduleExecutor) ScheduleAtCronRate(r Runnable, rule CRONRule) (Ca
 	p.cronScheduleOnce.Do(p.dispatchCRON)
 
 	return removeFunc, nil
+}
+
+func (p *PoolScheduleExecutor) ScheduleFuncAtCronRate(fn func(ctx context.Context), rule CRONRule) (CancelFunc, error) {
+	return p.ScheduleAtCronRate(RunnableFunc(fn), rule)
 }
 
 func (p *PoolScheduleExecutor) dispatchCRON() {
