@@ -41,8 +41,9 @@ func main() {
 
 	f2, _ := executor.Submit(callable)
 	// then, add callback when call succeed
-	f2.Then(func(val Person) {
+	f2.Then(func(val Person) error {
 		println("then name:", val.Name)
+		return nil
 	})
 
 	f3, _ := executor.Submit(callable)

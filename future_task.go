@@ -82,7 +82,7 @@ func (f *FutureTask[T]) Get(ctx context.Context) (T, error) {
 	}
 }
 
-func (f *FutureTask[T]) Then(thenFunc ThenFunction[T]) Future[T] {
+func (f *FutureTask[T]) Then(thenFunc ThenFunction[T]) NotThenableFuture[T] {
 	f.thenFunc = thenFunc
 	if f.Completed() {
 		f.postComplete()
@@ -90,7 +90,7 @@ func (f *FutureTask[T]) Then(thenFunc ThenFunction[T]) Future[T] {
 	return f
 }
 
-func (f *FutureTask[T]) Catch(catchFunc CatchFunction) Future[T] {
+func (f *FutureTask[T]) Catch(catchFunc CatchFunction) NotChainableFuture[T] {
 	f.catchFunc = catchFunc
 	if f.Completed() {
 		f.postComplete()
@@ -106,8 +106,9 @@ func (f *FutureTask[T]) report(state uint32) (T, error) {
 		return f.val, ErrFutureCanceled
 	case _StateError:
 		return f.val, f.err
+	default:
+		panic(ErrInvalidState{state: f.state})
 	}
-	panic(ErrInvalidState{state: f.state})
 }
 
 func (f *FutureTask[T]) completeValue(val T) {
@@ -137,7 +138,10 @@ func (f *FutureTask[T]) postComplete() {
 		}
 	} else {
 		if f.thenFunc != nil {
-			f.thenFunc(f.val)
+			err := f.thenFunc(f.val)
+			if err != nil && f.catchFunc != nil {
+				f.catchFunc(err)
+			}
 		}
 	}
 }
